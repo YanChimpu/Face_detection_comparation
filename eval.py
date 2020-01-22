@@ -2,6 +2,7 @@ from ap_parser import AveragePrecisionOnImages
 import numpy as np
 import cv2
 import os
+from tqdm import tqdm
 
 
 def get_rectangle_img(img, box, color):
@@ -12,11 +13,11 @@ def get_rectangle_img(img, box, color):
 
 def get_pred_dict(Pred_DIR_path):
     predictions = []
-    for dir_path in os.listdir(Pred_DIR_path):
+    for dir_path in tqdm(os.listdir(Pred_DIR_path)):
         for pred_res in os.listdir(pred_DIR_path + dir_path):
             pred_res_path = pred_DIR_path + dir_path + '/' + pred_res
             pred_bbx = []
-            f_p = open(pred_res_path, 'r')
+            f_p = open(pred_res_path, 'rb')
             for line in f_p.readlines():
                 if line:
                     pred_bbx.append(list(int(i) for i in line.strip().split('\t')))
@@ -27,10 +28,31 @@ def get_pred_dict(Pred_DIR_path):
     return predictions
 
 
+def get_pred_dict_(Pred_DIR_path):
+    predictions = []
+    for dir_path in tqdm(os.listdir(Pred_DIR_path)):
+        for pred_res in os.listdir(pred_DIR_path + dir_path):
+            pred_res_path = pred_DIR_path + dir_path + '/' + pred_res
+            pred_bbx = []
+            f_p = open(pred_res_path, 'rb')
+            for line in f_p.readlines():
+                if line:
+                    print(str(line).split('b\'')[1].strip().split('\\t')[0:4])
+                    try:
+                        pred_bbx.append(list(int(i) for i in str(line).split('b\'')[1].strip().split('\\t')[0:4]))
+                    except ValueError:
+                        pass
+            pred_bbx = np.array(pred_bbx)
+            for box in pred_bbx:
+                info = {'bbox': box, 'confidence': 0.8, 'file_id': pred_res[:-4] + '.jpg'}
+                predictions.append(info)
+    return predictions
+
+
 def get_gt_dict(gt_DIR_path_):
     gts = {}
     num_gt = 0
-    for dir_path in os.listdir(gt_DIR_path_):
+    for dir_path in tqdm(os.listdir(gt_DIR_path_)):
         for gt_res in os.listdir(gt_DIR_path_ + dir_path):
             gt_res_path = gt_DIR_path_ + dir_path + '/' + gt_res
             gt_bbx = []
@@ -45,18 +67,19 @@ def get_gt_dict(gt_DIR_path_):
 
 
 def main():
-    predictions = get_pred_dict(pred_DIR_path)
+    predictions = get_pred_dict_(pred_DIR_path)
     gts, num_gt = get_gt_dict(gt_DIR_path)
     ap, recall, precision = AveragePrecisionOnImages(gts, predictions, num_gt, min_overlap=0.5, validate_input=True)
+    print(ap)
     print('ap: {}'.format(ap))
     print('recall: {}'.format(recall))
     print('precision: {}'.format(precision))
 
 
 if __name__ == '__main__':
-    pred_DIR_path = 'test/pred/'
-    gt_DIR_path = 'test/gt/'
-    img_DIR_path = '/Users/pu/Documents/work/data/wider_face/WIDER_val/images/'
+    pred_DIR_path = '/opt/userhome/yangqingpu/workspace/face_detection/ul_cnn_result/'
+    gt_DIR_path = '/opt/userhome/yangqingpu/data/faces/WIDER_FACE/wider_face_split/wider_face_val/'
+    # img_DIR_path = '/Users/pu/Documents/work/data/wider_face/WIDER_val/images/'
     main()
     #
     # pred_path = '/Users/pu/Documents/work/face_detection/Detection/result/1--Handshaking/' \
